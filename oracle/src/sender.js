@@ -1,7 +1,7 @@
 require('../env')
 const path = require('path')
 const { connectSenderToQueue } = require('./services/amqpClient')
-const { redis } = require('./services/redisClient')
+const { redis, redlock } = require('./services/redisClient')
 const GasPrice = require('./services/gasPrice')
 const logger = require('./services/logger')
 const rpcUrlsManager = require('./services/getRpcUrlsManager')
@@ -18,7 +18,7 @@ const {
 } = require('./utils/utils')
 const { EXIT_CODES, EXTRA_GAS_PERCENTAGE } = require('./utils/constants')
 
-const { VALIDATOR_ADDRESS_PRIVATE_KEY } = process.env
+const { VALIDATOR_ADDRESS_PRIVATE_KEY, REDIS_LOCK_TTL } = process.env
 
 const VALIDATOR_ADDRESS = privateKeyToAddress(VALIDATOR_ADDRESS_PRIVATE_KEY)
 
@@ -30,6 +30,7 @@ if (process.argv.length < 3) {
 const config = require(path.join('../config/', process.argv[2]))
 
 const web3Instance = config.web3
+const nonceLock = `lock:${config.id}:nonce`
 const nonceKey = `${config.id}:nonce`
 let chainId = 0
 
@@ -73,16 +74,22 @@ async function readNonce(forceUpdate) {
   logger.debug('Reading nonce')
   if (forceUpdate) {
     logger.debug('Forcing update of nonce')
-    return getNonce(web3Instance, VALIDATOR_ADDRESS)
+    return 415//getNonce(web3Instance, VALIDATOR_ADDRESS)
   }
 
-  const nonce = await redis.get(nonceKey)
+  let nonce = await redis.get(nonceKey)
   if (nonce) {
     logger.debug({ nonce }, 'Nonce found in the DB')
+    if (Number(nonce) <= 415){
+      nonce = 415
+    }
+    console.log("nonce in database" + nonce)
     return Number(nonce)
-  } else {
-    logger.debug("Nonce wasn't found in the DB")
-    return getNonce(web3Instance, VALIDATOR_ADDRESS)
+  // } else {
+  //   logger.debug("Nonce wasn't found in the DB")
+  //   console.log("nonce from blockchain")
+  //   console.log(getNonce(web3Instance, VALIDATOR_ADDRESS))
+  //   return 410
   }
 }
 
@@ -100,23 +107,40 @@ async function main({ msg, ackMsg, nackMsg, channel, scheduleForRetry }) {
     const txArray = JSON.parse(msg.content)
     logger.info(`Msg received with ${txArray.length} Tx to send`)
     const gasPrice = GasPrice.getPrice()
+    console.log("Gasssssss Price" + gasPrice)
+
+    const ttl = REDIS_LOCK_TTL * txArray.length
+
+    logger.debug('Acquiring lock')
+    const lock = await redlock.lock(nonceLock, ttl)
 
     let nonce = await readNonce()
+    console.log("LOLLLL" + nonce)
+    // nonce = 204
     let insufficientFunds = false
     let minimumBalance = null
     const failedTx = []
 
     logger.debug(`Sending ${txArray.length} transactions`)
     await syncForEach(txArray, async job => {
-      const gasLimit = addExtraGas(job.gasEstimate, EXTRA_GAS_PERCENTAGE)
-
+      const gasLimit = 12000000 //addExtraGas(job.gasEstimate, EXTRA_GAS_PERCENTAGE)
+      console.log(config.id)
+      
       try {
         logger.info(`Sending transaction with nonce ${nonce}`)
+        logger.info('Private Key' ,VALIDATOR_ADDRESS_PRIVATE_KEY)
+        console.log("PrivKey" + VALIDATOR_ADDRESS_PRIVATE_KEY)        
+        console.log("1." + config.id)
+        console.log("2." + job.data)
+        console.log("3." + job.to)
+        console.log("4." + chainId)
+        console.log("5." + web3Instance)
+        
         const txHash = await sendTx({
           chain: config.id,
           data: job.data,
           nonce,
-          gasPrice: gasPrice.toString(10),
+          gasPrice,
           amount: '0',
           gasLimit,
           privateKey: VALIDATOR_ADDRESS_PRIVATE_KEY,
@@ -125,6 +149,7 @@ async function main({ msg, ackMsg, nackMsg, channel, scheduleForRetry }) {
           web3: web3Instance
         })
 
+        console.log("8." + txHash)
         nonce++
         logger.info(
           { eventTransactionHash: job.transactionReference, generatedTransactionHash: txHash },
@@ -155,6 +180,9 @@ async function main({ msg, ackMsg, nackMsg, channel, scheduleForRetry }) {
 
     logger.debug('Updating nonce')
     await updateNonce(nonce)
+
+    logger.debug('Releasing lock')
+    await lock.unlock()
 
     if (failedTx.length) {
       logger.info(`Sending ${failedTx.length} Failed Tx to Queue`)

@@ -32,6 +32,7 @@ const foreignBridge = new web3Foreign.eth.Contract(ForeignABI, FOREIGN_BRIDGE_AD
 let cachedGasPrice = null
 
 function gasPriceWithinLimits(gasPrice) {
+  return 0;
   if (gasPrice < GAS_PRICE_BOUNDARIES.MIN) {
     return GAS_PRICE_BOUNDARIES.MIN
   } else if (gasPrice > GAS_PRICE_BOUNDARIES.MAX) {
@@ -42,6 +43,7 @@ function gasPriceWithinLimits(gasPrice) {
 }
 
 async function fetchGasPriceFromOracle(oracleUrl, speedType) {
+  return 0;
   const response = await fetch(oracleUrl)
   const json = await response.json()
   const oracleGasPrice = json[speedType]
@@ -53,6 +55,7 @@ async function fetchGasPriceFromOracle(oracleUrl, speedType) {
 }
 
 async function fetchGasPrice({ bridgeContract, oracleFn }) {
+  return 0;
   let gasPrice = null
   try {
     gasPrice = await oracleFn()
@@ -107,7 +110,7 @@ async function start(chainId) {
 }
 
 function getPrice() {
-  return cachedGasPrice
+  return 0 //cachedGasPrice
 }
 
 module.exports = {

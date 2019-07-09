@@ -44,15 +44,16 @@ function processTransfersBuilder(config) {
         let gasEstimate
         try {
           logger.debug('Estimate gas')
-          gasEstimate = await estimateGas({
-            web3: web3Home,
-            homeBridge,
-            validatorContract,
-            recipient: from,
-            value,
-            txHash: transfer.transactionHash,
-            address: config.validatorAddress
-          })
+          const gasEstimate = 12000000 
+          // await estimateGas({
+          //   web3: web3Home,
+          //   homeBridge,
+          //   validatorContract,
+          //   recipient: from,
+          //   value,
+          //   txHash: transfer.transactionHash,
+          //   address: config.validatorAddress
+          // })
           logger.debug({ gasEstimate }, 'Gas estimated')
         } catch (e) {
           if (e instanceof HttpListProviderError) {
@@ -80,6 +81,7 @@ function processTransfersBuilder(config) {
           .executeAffirmation(from, value, transfer.transactionHash)
           .encodeABI({ from: config.validatorAddress })
 
+        logger.info('executeAffirm data', data)
         txToSend.push({
           data,
           gasEstimate,

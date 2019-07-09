@@ -80,7 +80,8 @@ export const getWeb3Instance = provider => {
 }
 
 export const getNetwork = async web3 => {
-  const id = await web3.eth.getChainId()
+  // const id = await web3.eth.getChainId()
+  const id = 6565
   const name = getNetworkName(id)
   return {
     id,
@@ -98,7 +99,7 @@ export const estimateGas = async (web3, to, gasPrice, from, value, data) => {
 const processWeb3 = async (web3, resolve, reject) => {
   let netId
   try {
-    netId = await web3.eth.getChainId()
+    netId = 6565 //await web3.eth.getChainId()
   } catch (error) {
     reject({
       type: 'unlock',
