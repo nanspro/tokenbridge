@@ -29,12 +29,12 @@ async function getBlockNumber(web3) {
 async function getChainId(chain) {
   try {
     logger.debug('Getting chain id')
-    const chainIdHex = await sendRawTx({
-      chain,
-      method: 'eth_chainId',
-      params: []
-    })
-    const chainId = hexToNumber(chainIdHex)
+    // const chainIdHex = await sendRawTx({
+    //   chain,
+    //   method: 'eth_chainId',
+    //   params: []
+    // })
+    const chainId = hexToNumber(6565)
     logger.debug({ chainId }, 'Chain id obtained')
     return chainId
   } catch (e) {
@@ -58,6 +58,8 @@ async function getRequiredBlockConfirmations(contract) {
 }
 
 async function getEvents({ contract, event, fromBlock, toBlock, filter }) {
+  console.log("Inside getEvents")
+  filter = {}
   try {
     const contractAddress = contract.options.address
     logger.info(

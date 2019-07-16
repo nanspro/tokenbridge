@@ -112,8 +112,9 @@ async function getLastBlockToProcess() {
     lastBlockNumberPromise,
     requiredBlockConfirmationsPromise
   ])
-
-  return lastBlockNumber.sub(requiredBlockConfirmations)
+  // console.log("Required block confirmations" + requiredBlockConfirmations)
+  // console.log("Get last block number" + lastBlockNumber)
+  return lastBlockNumber//.sub(requiredBlockConfirmations)
 }
 
 async function main({ sendToQueue }) {
@@ -139,13 +140,17 @@ async function main({ sendToQueue }) {
 
     if (events.length) {
       const job = await processEvents(events)
+      logger.info('Type of event:', config.id)
       logger.info('Transactions to send:', job.length)
 
       if (job.length) {
+        logger.info('Sending to Queue')        
         await sendToQueue(job)
       }
     }
 
+    console.log("out of get events")
+    console.log("Last Processed Block:" + lastBlockToProcess)
     logger.debug(
       { lastProcessedBlock: lastBlockToProcess.toString() },
       'Updating last processed block'

@@ -15,7 +15,7 @@ import {
   getDecimals,
   getTotalSupply,
   getBalanceOf,
-  mintedTotallyByBridge,
+  mintedTotally,
   totalBurntCoins,
   getName,
   getFeeManager,
@@ -24,11 +24,7 @@ import {
   getFeeManagerMode,
   ZERO_ADDRESS,
   getValidatorList,
-  getDeployedAtBlock,
-  getBlockRewardContract,
-  getValidatorContract,
-  getRequiredSignatures,
-  getValidatorCount
+  getDeployedAtBlock
 } from './utils/contract'
 import { balanceLoaded, removePendingTransaction } from './utils/testUtils'
 import sleep from './utils/sleep'
@@ -257,10 +253,7 @@ class HomeStore {
           balanceLoaded()
         })
       } else if (this.rootStore.bridgeMode === BRIDGE_MODES.ERC_TO_NATIVE) {
-        const mintedCoins = await mintedTotallyByBridge(
-          this.blockRewardContract,
-          this.HOME_BRIDGE_ADDRESS
-        )
+        const mintedCoins = await mintedTotally(this.blockRewardContract)
         const burntCoins = await totalBurntCoins(this.homeBridge)
         this.balance = fromDecimals(mintedCoins.minus(burntCoins).toString(10), this.tokenDecimals)
       } else {
@@ -425,14 +418,14 @@ class HomeStore {
   @action
   async getValidators() {
     try {
-      const homeValidatorsAddress = await getValidatorContract(this.homeBridge)
+      const homeValidatorsAddress = await this.homeBridge.methods.validatorContract().call()
       this.homeBridgeValidators = new this.homeWeb3.eth.Contract(
         BRIDGE_VALIDATORS_ABI,
         homeValidatorsAddress
       )
 
-      this.requiredSignatures = await getRequiredSignatures(this.homeBridgeValidators)
-      this.validatorsCount = await getValidatorCount(this.homeBridgeValidators)
+      this.requiredSignatures = await this.homeBridgeValidators.methods.requiredSignatures().call()
+      this.validatorsCount = await this.homeBridgeValidators.methods.validatorCount().call()
 
       this.validators = await getValidatorList(homeValidatorsAddress, this.homeWeb3.eth)
     } catch (e) {
@@ -531,7 +524,7 @@ class HomeStore {
   }
 
   async getBlockRewardContract() {
-    const blockRewardAddress = await getBlockRewardContract(this.homeBridge)
+    const blockRewardAddress = await this.homeBridge.methods.blockRewardContract().call()
     this.blockRewardContract = new this.homeWeb3.eth.Contract(BLOCK_REWARD_ABI, blockRewardAddress)
   }
 
